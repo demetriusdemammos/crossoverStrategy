@@ -55,15 +55,31 @@ python test.py --help
 | `--slow` | int | 50 | Slow moving average period |
 | `--duration` | str | 3y | Time period (see options below) |
 | `--ticker` | str | AAPL | Stock ticker symbol |
+| `--interval` | str | 1d | Candle interval (see options below) |
 
 ### Duration Options
 
 **Relative Periods:**
+- `1d`, `7d`, `14d`, `30d` - Days
 - `1m`, `3m`, `6m` - Months
 - `1y`, `2y`, `3y`, `5y` - Years
 
 **Custom Date Range:**
 - `2020-01-01,2023-12-31` - Start date, End date
+
+### Interval Options
+
+**Intraday:**
+- `1m`, `2m`, `5m`, `15m`, `30m`, `60m`, `90m` - Minutes
+- `1h` - Hourly (same as 60m)
+
+**Daily and Above:**
+- `1d` - Daily (default)
+- `5d` - 5 days
+- `1wk` - Weekly  
+- `1mo` - Monthly
+
+**Note**: Intraday data has limited history (typically 60-730 days depending on the interval)
 
 ## Example Commands
 
@@ -79,6 +95,12 @@ python test.py --ticker NVDA --fast 10 --slow 25
 # Custom date ranges
 python test.py --duration "2020-03-01,2021-03-01"  # COVID crash recovery
 python test.py --duration "2022-01-01,2023-01-01"  # Bear market year
+
+# Different intervals
+python test.py --interval 1h --duration 7d    # Hourly data for 1 week
+python test.py --interval 1wk --duration 5y   # Weekly data for 5 years
+python test.py --interval 5m --duration 1d    # 5-min data for 1 day
+python test.py --interval 15m --duration 14d  # 15-min data for 2 weeks
 ```
 
 ## Output
@@ -87,19 +109,20 @@ python test.py --duration "2022-01-01,2023-01-01"  # Bear market year
 ```
 Running MA Crossover Strategy:
 Ticker: AAPL
-Fast MA: 20, Slow MA: 50
-Period: 2021-08-25 to 2024-08-25
+Fast MA: 3, Slow MA: 8
+Interval: 5m
+Period: 2025-08-26 to 2025-08-27
 --------------------------------------------------
-Downloaded 782 rows of data
+Downloaded 78 rows of data
 
 Strategy Performance:
-Total Return: 81.83%
-Final Equity: 1.8183
+Total Return: 0.55%
+Final Equity: 1.0055
 ```
 
 ### Files Generated
 - **Chart**: Interactive candlestick chart with MA overlays and equity curve
-- **CSV**: `data/aapl_ma20_50_3y.csv` - Full backtest data with indicators
+- **CSV**: `data/aapl_ma3_8_5min_1d.csv` - Full backtest data with indicators
 
 ## File Structure
 

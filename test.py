@@ -58,9 +58,17 @@ def backtest(df, fast=20, slow=50):
     return px
 
 ## PLOTTING
-def plot_candles(ax, df, width=0.6):
+def plot_candles(ax, df, width=None):
     # Manually draw wicks + bodies; index must be datetime-like
     x = mdates.date2num(df.index.to_pydatetime())
+    
+    # Auto-calculate width based on data frequency
+    if width is None and len(x) > 1:
+        avg_gap = (x[-1] - x[0]) / len(x)
+        width = avg_gap * 0.3  
+    elif width is None:
+        width = 0.3  
+    
     for i, (_, row) in enumerate(df.iterrows()):
         o, h, l, c = float(row['Open']), float(row['High']), float(row['Low']), float(row['Close'])
         # wick
@@ -71,7 +79,9 @@ def plot_candles(ax, df, width=0.6):
         color = 'green' if c >= o else 'red'
         rect = Rectangle((x[i] - width/2, lower), width, height, edgecolor=color, facecolor=color)
         ax.add_patch(rect)
-    ax.set_xlim(x[0] - 1, x[-1] + 1)
+    
+    if len(x) > 0:
+        ax.set_xlim(x[0] - width, x[-1] + width)
     ax.xaxis_date()
 
 def plot_all(df, fast=20, slow=50, ticker="AAPL"):
@@ -87,12 +97,21 @@ def plot_all(df, fast=20, slow=50, ticker="AAPL"):
     ax1.set_ylabel("Price")
     ax1.legend(loc='best')
     ax1.grid(True)
+    
+    # Set x-axis limits to actual data range
+    ax1.set_xlim(df.index[0], df.index[-1])
+    
     # Panel 2: Equity curve
     ax2 = fig.add_subplot(gs[1, 0], sharex=ax1)
     ax2.plot(df.index, df['equity'], linewidth=1.2, label='Strategy')
     ax2.set_ylabel("Equity")
     ax2.legend(loc='best')
     ax2.grid(True)
+    
+    # Set x-axis limits to actual data range
+    ax2.set_xlim(df.index[0], df.index[-1])
+    
+    plt.tight_layout()
     plt.show()
 
 def parse_args():
@@ -100,8 +119,10 @@ def parse_args():
     parser.add_argument('--fast', type=int, default=20, help='Fast moving average period (default: 20)')
     parser.add_argument('--slow', type=int, default=50, help='Slow moving average period (default: 50)')
     parser.add_argument('--duration', type=str, default='3y', 
-                       help='Duration: 1y, 2y, 3y, 6m, 1m, or YYYY-MM-DD,YYYY-MM-DD (default: 3y)')
+                       help='Duration: 7d, 14d, 30d, 1m, 3m, 6m, 1y, 2y, 3y, 5y, or YYYY-MM-DD,YYYY-MM-DD (default: 3y)')
     parser.add_argument('--ticker', type=str, default='AAPL', help='Stock ticker (default: AAPL)')
+    parser.add_argument('--interval', type=str, default='1d', 
+                       help='Candle interval: 1m, 2m, 5m, 15m, 30m, 60m, 90m, 1h, 1d, 5d, 1wk, 1mo (default: 1d)')
     return parser.parse_args()
 
 def parse_duration(duration_str):
@@ -115,6 +136,10 @@ def parse_duration(duration_str):
     
     # Relative durations
     duration_map = {
+        '1d': timedelta(days=1),
+        '7d': timedelta(days=7),
+        '14d': timedelta(days=14),
+        '30d': timedelta(days=30),
         '1m': timedelta(days=30),
         '3m': timedelta(days=90),
         '6m': timedelta(days=180),
@@ -128,7 +153,7 @@ def parse_duration(duration_str):
         start_date = today - duration_map[duration_str]
         return start_date.strftime('%Y-%m-%d'), today.strftime('%Y-%m-%d')
     else:
-        raise ValueError(f"Invalid duration: {duration_str}. Use 1y, 2y, 3y, 6m, 1m, or YYYY-MM-DD,YYYY-MM-DD")
+        raise ValueError(f"Invalid duration: {duration_str}. Use 7d, 14d, 30d, 1m, 3m, 6m, 1y, 2y, 3y, 5y, or YYYY-MM-DD,YYYY-MM-DD")
 
 ## MAIN
 def main():
@@ -140,11 +165,12 @@ def main():
     print(f"Running MA Crossover Strategy:")
     print(f"Ticker: {args.ticker}")
     print(f"Fast MA: {args.fast}, Slow MA: {args.slow}")
+    print(f"Interval: {args.interval}")
     print(f"Period: {start_date} to {end_date}")
     print("-" * 50)
     
     # Download data
-    df = yf.download(args.ticker, start=start_date, end=end_date, interval="1d", auto_adjust=True)
+    df = yf.download(args.ticker, start=start_date, end=end_date, interval=args.interval, auto_adjust=True)
     df = df.dropna()
     
     if isinstance(df.columns, pd.MultiIndex):
@@ -160,7 +186,8 @@ def main():
     plot_all(px, args.fast, args.slow, args.ticker)
     
     # Save to CSV
-    filename = f'data/{args.ticker.lower()}_ma{args.fast}_{args.slow}_{args.duration.replace(",", "_")}.csv'
+    interval_clean = args.interval.replace('m', 'min').replace('h', 'hr').replace('d', 'day').replace('wk', 'week').replace('mo', 'month')
+    filename = f'data/{args.ticker.lower()}_ma{args.fast}_{args.slow}_{interval_clean}_{args.duration.replace(",", "_")}.csv'
     px.to_csv(filename)
     print(f"\nData saved to {filename} ({len(px)} rows)")
     
