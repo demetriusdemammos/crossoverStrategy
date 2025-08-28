@@ -129,7 +129,6 @@ Final Equity: 1.0055
 ```
 crossoverStrategy/
 - test.py          # Implementation with detailed metrics
-- main.py          # Original version with more detailed analysis
 - data/            # CSV exports directory
   - *.csv          # Backtest results
 - README.md        # This file
